@@ -15,8 +15,9 @@ class CartResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'items' => isset($this->items) ? CartItemsResource::collection($this->items) : null,
-            'total_sum' => $this->total_sum ?? 0,
+            'items' => isset($this->items) ? CartItemsResource::collection($this->items) :
+                (isset($this['items']) ? CartItemsResource::collection($this['items']) : null),
+            'total_sum' => $this->total_sum ?? (isset($this['total_sum']) ? $this['total_sum'] : 0),
         ];
     }
 }

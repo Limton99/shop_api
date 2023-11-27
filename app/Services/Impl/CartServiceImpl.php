@@ -17,9 +17,27 @@ class CartServiceImpl implements \App\Services\CartService
     public function index()
     {
         if (Auth::user()) {
-            return new CartResource(Auth::user()->cart()->first());
+            return Auth::user()->cart()->first();
         } else {
-            return Session::get('cart');
+            $cart = Session::get('cart');
+            $items = [
+
+            ];
+            $totalSum = 0;
+            foreach ($cart as $item) {
+                $items[] = collect([
+                    "sum" => $item['sum'],
+                    "count" => $item['count'],
+                    "product" => $item['product']
+                ]);
+                $totalSum += $item['sum'];
+            }
+
+            $data = [
+                'items' => collect($items),
+                'total_sum' => $totalSum
+            ];
+            return new CartResource($data);
         }
     }
 
@@ -72,7 +90,6 @@ class CartServiceImpl implements \App\Services\CartService
 
                 $cart->save();
             }
-            return new CartResource($cart);
         } else {
             $cart = Session::get('cart');
 
@@ -91,7 +108,8 @@ class CartServiceImpl implements \App\Services\CartService
                                 'id' => $product->id,
                                 'name' => $product->name,
                                 'sum' => $product->price,
-                                'count' => 1
+                                'count' => 1,
+                                'product' => $product
                             ];
                             break;
                         }
@@ -102,13 +120,17 @@ class CartServiceImpl implements \App\Services\CartService
                     'id' => $product->id,
                     'name' => $product->name,
                     'sum' => $product->price,
-                    'count' => 1
+                    'count' => 1,
+                    'product' => $product
+
                 ];
             }
             Session::put('cart', $cart);
 
-            return Session::get('cart');
         }
+
+        return true;
+
     }
 
     public function removeFromCart(Request $request)
@@ -124,6 +146,10 @@ class CartServiceImpl implements \App\Services\CartService
                 if ($items) {
                     foreach ($items as $key => $item) {
                         if ($item->product_id == $product->id) {
+                            if ($item->count == 1) {
+                                $item->delete();
+                                break;
+                            }
                             $item->count -= 1;
                             $item->sum -= $product->price;
 
@@ -141,6 +167,10 @@ class CartServiceImpl implements \App\Services\CartService
 
             if ($cart != null && is_array($cart)) {
                 for ($i = 0; $i < count($cart); $i++) {
+                    if ($cart[$i]['count'] == 1) {
+                        array_splice($cart, $i, 1);
+                        break;
+                    }
                     if ($cart[$i]['id'] == $product->id) {
                         $cart[$i]['count'] -= 1;
                         $cart[$i]['sum'] -= $product->price;
@@ -150,9 +180,10 @@ class CartServiceImpl implements \App\Services\CartService
                 Session::put('cart', $cart);
 
             }
-        }
 
-        return null;
+        }
+        return true;
+
     }
 
     public function createCartItem($cart, $product) {

@@ -26,6 +26,7 @@ Route::group(['prefix' => 'products'], function () {
 Route::group(['prefix' => 'cart', 'middleware' => 'optional_auth'], function () {
     Route::get('/', [\App\Http\Controllers\CartController::class, 'index']);
     Route::post('/add', [\App\Http\Controllers\CartController::class, 'addToCart']);
+    Route::post('/remove', [\App\Http\Controllers\CartController::class, 'removeFromCart']);
 });
 
 Route::group(['prefix' => 'user'], function () {

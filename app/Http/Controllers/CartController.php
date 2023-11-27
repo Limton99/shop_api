@@ -43,4 +43,20 @@ class CartController extends Controller
             ]);
         }
     }
+
+    public function removeFromCart(Request $request) {
+        try {
+            return response()->json([
+                'data' => $this->cartService->removeFromCart($request),
+                'success' => true,
+                'message' => ''
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'data' => null,
+                'success' => false,
+                'message' => $e->getMessage()
+            ]);
+        }
+    }
 }
