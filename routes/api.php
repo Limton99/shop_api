@@ -23,7 +23,12 @@ Route::group(['prefix' => 'products'], function () {
     Route::get('/search', [\App\Http\Controllers\ProductController::class, 'search']);
 });
 
-Route::group(['prefix' => 'cart'], function () {
+Route::group(['prefix' => 'cart', 'middleware' => 'optional_auth'], function () {
     Route::get('/', [\App\Http\Controllers\CartController::class, 'index']);
     Route::post('/add', [\App\Http\Controllers\CartController::class, 'addToCart']);
+});
+
+Route::group(['prefix' => 'user'], function () {
+    Route::post('/register', [\App\Http\Controllers\UserController::class, 'register']);
+    Route::post('/login', [\App\Http\Controllers\UserController::class, 'login']);
 });

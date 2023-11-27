@@ -2,9 +2,13 @@
 
 namespace App\Services\Impl;
 
+use App\Http\Resources\CartResource;
+use App\Models\Cart;
+use App\Models\CartItems;
 use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Session;
 
 class CartServiceImpl implements \App\Services\CartService
@@ -13,7 +17,7 @@ class CartServiceImpl implements \App\Services\CartService
     public function index()
     {
         if (Auth::user()) {
-            return null;
+            return new CartResource(Auth::user()->cart()->first());
         } else {
             return Session::get('cart');
         }
@@ -21,38 +25,87 @@ class CartServiceImpl implements \App\Services\CartService
 
     public function addToCart(Request $request)
     {
+        $product = Product::findOrFail($request->productId);
+
         if (Auth::user()) {
-            return null;
-        } else {
-            $product = Product::findOrFail($request->productId);
-            $cart = Session::get('cart');
-            $data = [
-            ];
-            if ($cart != null && is_array($cart)) {
-                foreach($cart as $item){
-                    if ($item['id'] == $product->id) {
-                        $item['count'] += 1;
-                        $item['price'] += $product->price;
-                        $data[] = $item;
-                    } else{
-                        $data = $cart;
-                        $data[] = [
-                            'id' => $product->id,
-                            'name' => $product->name,
-                            'price' => $product->price,
-                            'count' => 1
-                        ];
+            $user = Auth::user();
+            $cart = $user->cart()->first();
+
+            if ($cart) {
+                $items = $cart->items()->get();
+                foreach ($items as $key => $item) {
+
+                    if ($item->product_id == $product->id) {
+                        $item->count += 1;
+                        $item->sum += $product->price;
+
+                        $cart->total_sum += $product->price;
+                        $item->save();
+                        $cart->save();
+                        break;
+                    } else {
+                        if ($key == count($items) - 1) {
+                            $this->createCartItem($cart, $product);
+                            $cart->total_sum += $product->price;
+                            $cart->save();
+
+                            break;
+                        }
                     }
-                };
+                }
+                if (count($items) == 0) {
+                    $cartItem = $this->createCartItem($cart, $product);
+
+                    $cart->total_sum += $cartItem->sum;
+
+                }
+            }
+            else {
+                $cart = Cart::create([
+                    'user_id' => $user->id,
+                    'total_sum' => 0
+                ]);
+
+                $cartItem = $this->createCartItem($cart, $product);
+
+                $cart->total_sum += $cartItem->sum;
+
+                $cart->save();
+            }
+            return new CartResource($cart);
+        } else {
+            $cart = Session::get('cart');
+
+
+            if ($cart != null && is_array($cart)) {
+
+                for ($i = 0; $i < count($cart); $i++) {
+                    if ($cart[$i]['id'] == $product->id) {
+                        $cart[$i]['count'] += 1;
+                        $cart[$i]['sum'] += $product->price;
+                        break;
+                    }
+                    else{
+                        if ($i == count($cart) - 1) {
+                            $cart[] = [
+                                'id' => $product->id,
+                                'name' => $product->name,
+                                'sum' => $product->price,
+                                'count' => 1
+                            ];
+                            break;
+                        }
+                    }
+                }
             } else {
-                $data[] = [
+                $cart[] = [
                     'id' => $product->id,
                     'name' => $product->name,
-                    'price' => $product->price,
+                    'sum' => $product->price,
                     'count' => 1
                 ];
             }
-            Session::put('cart', $data);
+            Session::put('cart', $cart);
 
             return Session::get('cart');
         }
@@ -61,5 +114,14 @@ class CartServiceImpl implements \App\Services\CartService
     public function removeFromCart(Request $request)
     {
         // TODO: Implement removeFromCart() method.
+    }
+
+    public function createCartItem($cart, $product) {
+        return CartItems::create([
+            'cart_id' => $cart->id,
+            'product_id' => $product->id,
+            'count' => 1,
+            'sum' => $product->price
+        ]);
     }
 }
