@@ -17,7 +17,7 @@ class CartServiceImpl implements \App\Services\CartService
     public function index()
     {
         if (Auth::user()) {
-            return Auth::user()->cart()->first();
+            return new CartResource(Auth::user()->cart()->first());
         } else {
             $cart = Session::get('cart');
             $items = [
